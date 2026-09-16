@@ -46,7 +46,7 @@ def verify_state(path, expected_value, expected_label_prefix):
     return ok
 
 def main():
-    os.chdir("/root/madel")
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     all_passed = True
     
     print("=" * 60)

@@ -11,17 +11,27 @@ import sys
 import os
 import time
 
+# Get project root dynamically
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = SCRIPT_DIR
+BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
+RUST_BINDINGS_DIR = os.path.join(PROJECT_ROOT, "rust_bindings")
+
+def get_build_path(name: str) -> str:
+    return os.path.join(BUILD_DIR, name)
+
 def create_il_from_c(json_file: str, state_file: str):
     """C program creates IL JSON + state binary"""
     print("[C CREATOR] Creating S.W.UIR IL module...")
     
-    exe_path = "/root/madel/swuir_il_creator"
+    exe_path = get_build_path("swuir_il_creator")
     if not os.path.exists(exe_path):
         print("[C CREATOR] Compiling creator...")
         result = subprocess.run([
-            "gcc", "-std=c99", "-Wall", "-Wextra", "-O2", "-I/root/madel",
-            "-o", exe_path, "/root/madel/swuir_il_creator.c", "/root/madel/swuir_lib.o"
-        ], capture_output=True, text=True, cwd="/root/madel")
+            "gcc", "-std=c99", "-Wall", "-Wextra", "-O2", f"-I{PROJECT_ROOT}",
+            "-o", exe_path, os.path.join(PROJECT_ROOT, "swuir_il_creator.c"), 
+            os.path.join(PROJECT_ROOT, "swuir_lib.o")
+        ], capture_output=True, text=True, cwd=PROJECT_ROOT)
         if result.returncode != 0:
             print(f"[C CREATOR] Compilation failed: {result.stderr}")
             return False
@@ -67,12 +77,12 @@ def rust_executor(json_file: str, state_file: str, output_state_file: str):
     print(f"\n[RUST EXECUTOR] Loading IL from {json_file}...")
     print(f"[RUST EXECUTOR] Loading state from {state_file}...")
     
-    exe_path = "/root/madel/rust_bindings/target/debug/swuir_il_executor"
+    exe_path = os.path.join(RUST_BINDINGS_DIR, "target/debug/swuir_il_executor")
     if not os.path.exists(exe_path):
         print("[RUST EXECUTOR] Building Rust executor...")
         result = subprocess.run([
             "cargo", "build", "--bin", "swuir_il_executor"
-        ], capture_output=True, text=True, cwd="/root/madel/rust_bindings")
+        ], capture_output=True, text=True, cwd=os.path.join(PROJECT_ROOT, "rust_bindings"))
         if result.returncode != 0:
             print(f"[RUST EXECUTOR] Build failed: {result.stderr}")
             return False
@@ -88,13 +98,14 @@ def c_final_executor(json_file: str, state_file: str):
     """C reads final state, executes final warp"""
     print(f"\n[C FINAL] Loading state from {state_file}...")
     
-    exe_path = "/root/madel/swuir_il_final"
+    exe_path = get_build_path("swuir_il_final")
     if not os.path.exists(exe_path):
         print("[C FINAL] Compiling final executor...")
         result = subprocess.run([
-            "gcc", "-std=c99", "-Wall", "-Wextra", "-O2", "-I/root/madel",
-            "-o", exe_path, "/root/madel/swuir_il_final.c", "/root/madel/swuir_lib.o"
-        ], capture_output=True, text=True, cwd="/root/madel")
+            "gcc", "-std=c99", "-Wall", "-Wextra", "-O2", f"-I{PROJECT_ROOT}",
+            "-o", exe_path, os.path.join(PROJECT_ROOT, "swuir_il_final.c"), 
+            os.path.join(PROJECT_ROOT, "swuir_lib.o")
+        ], capture_output=True, text=True, cwd=PROJECT_ROOT)
         if result.returncode != 0:
             print(f"[C FINAL] Compilation failed: {result.stderr}")
             return False

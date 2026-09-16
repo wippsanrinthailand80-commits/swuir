@@ -9,6 +9,10 @@ import os
 import struct
 import json
 
+# Get project root dynamically
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = SCRIPT_DIR
+BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
 SESSION_DIR = "/tmp/swuir_sessions"
 os.makedirs(SESSION_DIR, exist_ok=True)
 
@@ -39,7 +43,7 @@ def write_il(json_file, session_name, state_type="DemoState"):
 
 # ============ C EXECUTABLES ============
 def compile_c_warp(session_name):
-    exe = f"{SESSION_DIR}/c_warp_{session_name}"
+    exe = os.path.join(BUILD_DIR, f"c_warp_{session_name}")
     if os.path.exists(exe): return exe
     
     code = (
@@ -63,8 +67,9 @@ def compile_c_warp(session_name):
         '    printf("[SESSION ' + session_name + '] Main unchanged: Val=%.2f\\n", st->value); free(b); return 0; }'
     )
     with open(f"/tmp/{session_name}.c", 'w') as f: f.write(code)
-    r = subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-O2", "-I/root/madel",
-                       "-o", exe, f"/tmp/{session_name}.c", "/root/madel/swuir_lib.o", "-lpthread"],
+    r = subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-O2", f"-I{PROJECT_ROOT}",
+                       "-o", exe, f"/tmp/{session_name}.c", 
+                       os.path.join(PROJECT_ROOT, "swuir_lib.o"), "-lpthread"],
                       capture_output=True)
     if r.returncode != 0:
         print(f"[C COMPILE FAIL] {session_name}: {r.stderr.decode()}")
@@ -98,10 +103,10 @@ def run_python_session(session_name, json_file, state_in, state_out):
     return True
 
 # ============ RUST SESSION ============
-RUST_EXE = f"{SESSION_DIR}/rust_warp"
+RUST_EXE = os.path.join(PROJECT_ROOT, "session2_rust_warp")
 def build_rust():
     if os.path.exists(RUST_EXE): return True
-    r = subprocess.run(["rustc", "--edition", "2021", "/root/madel/session2_rust_warp.rs", "-o", RUST_EXE], capture_output=True)
+    r = subprocess.run(["rustc", "--edition", "2021", os.path.join(PROJECT_ROOT, "session2_rust_warp.rs"), "-o", RUST_EXE], capture_output=True)
     return r.returncode == 0
 
 def run_rust_session(session_name, json_file, state_in, state_out):
@@ -113,9 +118,9 @@ def run_rust_session(session_name, json_file, state_in, state_out):
 # ============ SESSION RUNNER ============
 def run_session(source, target, test_num):
     session_name = f"{source}2{target}_t{test_num}"
-    json_file = f"{SESSION_DIR}/{session_name}.json"
-    state_in = f"{SESSION_DIR}/{session_name}_in.bin"
-    state_out = f"{SESSION_DIR}/{session_name}_out.bin"
+    json_file = os.path.join(SESSION_DIR, f"{session_name}.json")
+    state_in = os.path.join(SESSION_DIR, f"{session_name}_in.bin")
+    state_out = os.path.join(SESSION_DIR, f"{session_name}_out.bin")
     
     # Get input state from previous session or create initial
     if test_num == 1:
@@ -128,7 +133,7 @@ def run_session(source, target, test_num):
     else:
         # Use output from previous session
         prev_session = f"{source}2{target}_t{test_num-1}"
-        prev_out = f"{SESSION_DIR}/{prev_session}_out.bin"
+        prev_out = os.path.join(SESSION_DIR, f"{prev_session}_out.bin")
         if not os.path.exists(prev_out):
             print(f"[ERROR] Previous session output not found: {prev_out}")
             return False
@@ -159,7 +164,7 @@ def run_session(source, target, test_num):
     return False
 
 def main():
-    os.chdir("/root/madel")
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
     print("="*70)
     print("S.W.UIR 9-WAY SESSION-BASED CROSS-LANGUAGE TEST")
@@ -187,7 +192,7 @@ def main():
             if all_passed:
                 # Show final state
                 final_session = f"{src}2{tgt}_t3"
-                final_out = f"{SESSION_DIR}/{final_session}_out.bin"
+                final_out = os.path.join(SESSION_DIR, f"{final_session}_out.bin")
                 out = read_state(final_out)
                 if out:
                     print(f"  >>> Chain {src}->{tgt} FINAL: Value={out['value']:.2f}, Label={out['label']}")

@@ -10,7 +10,13 @@ import sys
 import os
 import tempfile
 
-sys.path.insert(0, '/root/madel')
+# Get project root dynamically
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = SCRIPT_DIR
+BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
+RUST_VM_DIR = os.path.join(PROJECT_ROOT, "rust_vm")
+
+sys.path.insert(0, PROJECT_ROOT)
 from python_vm import VMContext, BytecodeBuilder, VMOpcode, serialize_bytecode, deserialize_bytecode
 
 def build_factorial_bytecode() -> bytes:
@@ -47,8 +53,14 @@ def write_il_json(bytecode: bytes, module_name: str) -> str:
     }
     return json.dumps(il, indent=2)
 
+def get_build_path(name: str) -> str:
+    """Get path to built executable in build directory."""
+    build_dir = os.path.join(PROJECT_ROOT, "build")
+    os.makedirs(build_dir, exist_ok=True)
+    return os.path.join(BUILD_DIR, name)
+
 def run_c_vm(json_file: str) -> bool:
-    exe = "/root/madel/test_c_vm"
+    exe = os.path.join(BUILD_DIR, "test_c_vm")
     if not os.path.exists(exe):
         print("[C VM] Compiling...")
         code = '''
@@ -65,7 +77,7 @@ int main(int argc, char** argv) {
     char* json = malloc(sz + 1); fread(json, 1, sz, f); json[sz] = 0; fclose(f);
     json_error_t err; json_t* root = json_loads(json, 0, &err); free(json);
     if (!root) return 1;
-    json_t* bc = json_object_get(root, "bytecode"); json_t* sz = json_object_get(root, "bytecode_size");
+    json_t* bc = json_object_get(root, "bytecode"); json_t* sz = json_object_get(root, "size");
     if (!bc || !sz) { json_decref(root); return 1; }
     const char* hex = json_string_value(bc); size_t size = json_integer_value(sz);
     size_t bin = strlen(hex) / 2; uint8_t* code = malloc(bin);
@@ -76,12 +88,13 @@ int main(int argc, char** argv) {
 }
 '''
         with open("/tmp/test_c_vm.c", "w") as f: f.write(code)
-        r = subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-O2", "-I/root/madel",
-                           "-o", exe, "/tmp/test_c_vm.c", "/root/madel/swuir_vm.o", "-ljansson"], capture_output=True, text=True)
+        r = subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-O2", f"-I{PROJECT_ROOT}",
+                           "-o", os.path.join(BUILD_DIR, "test_c_vm"), "/tmp/test_c_vm.c", 
+                           os.path.join(PROJECT_ROOT, "swuir_vm.o"), "-ljansson"], capture_output=True, text=True)
         if r.returncode != 0:
             print(f"[C VM] Compile failed: {r.stderr}"); return False
     
-    r = subprocess.run([exe, json_file], capture_output=True, text=True)
+    r = subprocess.run([os.path.join(BUILD_DIR, "test_c_vm"), json_file], capture_output=True, text=True)
     print(r.stdout); 
     if r.stderr: print(r.stderr, file=sys.stderr)
     return r.returncode == 0
@@ -95,13 +108,10 @@ def run_python_vm(json_file: str) -> bool:
     else: print(f"[Python VM] Error: {vm.error}"); return False
 
 def run_rust_vm(json_file: str) -> bool:
-    # Use pre-built rust_vm binary with JSON input
-    exe = "/root/madel/rust_vm/target/debug/rust_vm_json"
+    exe = os.path.join(RUST_VM_DIR, "target/debug/rust_vm_json")
     if not os.path.exists(exe):
         print("[Rust VM] Building JSON runner...")
-        runner = '''
-use std::fs;
-use rust_vm::{VMContext, deserialize_bytecode};
+        runner = '''use rust_vm::{VMContext, deserialize_bytecode};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -112,15 +122,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut vm = VMContext::new(bytecode);
     match vm.execute() { Ok(_) => println!("[Rust VM] Executed successfully"), Err(e) => { println!("[Rust VM] Error: {}", e); return Err(e.into()); } }
     Ok(())
-}
-'''
-        os.makedirs("/root/madel/rust_vm/src/bin", exist_ok=True)
-        with open("/root/madel/rust_vm/src/bin/rust_vm_json.rs", "w") as f: f.write(runner)
-        r = subprocess.run(["cargo", "build", "--bin", "rust_vm_json"], cwd="/root/madel/rust_vm", capture_output=True, text=True)
+}'''
+        os.makedirs(os.path.join(PROJECT_ROOT, "rust_vm/src/bin"), exist_ok=True)
+        with open(os.path.join(PROJECT_ROOT, "rust_vm/src/bin/rust_vm_json.rs"), "w") as f: f.write(runner)
+        r = subprocess.run(["cargo", "build", "--bin", "rust_vm_json"], cwd=os.path.join(PROJECT_ROOT, "rust_vm"), capture_output=True, text=True)
         if r.returncode != 0:
             print(f"[Rust VM] Build failed: {r.stderr}"); return False
     
-    r = subprocess.run([exe, json_file], capture_output=True, text=True)
+    r = subprocess.run([os.path.join(RUST_VM_DIR, "target/debug/rust_vm_json"), json_file], capture_output=True, text=True)
     print(r.stdout); 
     if r.stderr: print(r.stderr, file=sys.stderr)
     return r.returncode == 0
@@ -136,15 +145,15 @@ def main():
     
     # Test matrix
     tests = [
-        ("Python->C", build_factorial_bytecode(), run_c_vm),
-        ("Python->Python", build_factorial_bytecode(), run_python_vm),
-        ("Python->Rust", build_factorial_bytecode(), run_rust_vm),
-        ("Rust->Python", build_fibonacci_bytecode(), run_python_vm),
-        ("Rust->C", build_fibonacci_bytecode(), run_c_vm),
-        ("Rust->Rust", build_fibonacci_bytecode(), run_rust_vm),
-        ("C->Python", bytes.fromhex("1005000000530000000010010000005301000000520000000010010000002153000000005201000000520000000022530100000052000000001001000000344114000000520100000061ff"), run_python_vm),
-        ("C->Rust", bytes.fromhex("1005000000530000000010010000005301000000520000000010010000002153000000005201000000520000000022530100000052000000001001000000344114000000520100000061ff"), run_rust_vm),
-        ("C->C", bytes.fromhex("1005000000530000000010010000005301000000520000000010010000002153000000005201000000520000000022530100000052000000001001000000344114000000520100000061ff"), run_c_vm),
+        ("Python->C", build_factorial_bytecode(), os.path.join(BUILD_DIR, "test_c_vm")),
+        ("Python->Python", build_factorial_bytecode(), None),
+        ("Python->Rust", build_factorial_bytecode(), os.path.join(RUST_VM_DIR, "target/debug/rust_vm_json")),
+        ("Rust->Python", build_fibonacci_bytecode(), None),
+        ("Rust->C", build_fibonacci_bytecode(), os.path.join(BUILD_DIR, "test_c_vm")),
+        ("Rust->Rust", build_fibonacci_bytecode(), os.path.join(RUST_VM_DIR, "target/debug/rust_vm_json")),
+        ("C->Python", bytes.fromhex("1005000000530000000010010000005301000000520000000010010000002153000000005201000000520000000022530100000052000000001001000000344114000000520100000061ff"), None),
+        ("C->Rust", bytes.fromhex("1005000000530000000010010000005301000000520000000010010000002153000000005201000000520000000022530100000052000000001001000000344114000000520100000061ff"), os.path.join(RUST_VM_DIR, "target/debug/rust_vm_json")),
+        ("C->C", bytes.fromhex("1005000000530000000010010000005301000000520000000010010000002153000000005201000000520000000022530100000052000000001001000000344114000000520100000061ff"), os.path.join(BUILD_DIR, "test_c_vm")),
     ]
     
     print("=" * 70)
@@ -152,13 +161,18 @@ def main():
     print("=" * 70)
     
     results = {}
-    for name, bytecode, runner in tests:
+    for name, bytecode, _ in tests:
         print(f"\n>>> {name} <<<")
         il = write_il_json(bytecode, name.replace("->", "_"))
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             f.write(il); jf = f.name
         try:
-            ok = runner(jf)
+            if "->C" in name:
+                ok = run_c_vm(jf)
+            elif "->Rust" in name:
+                ok = run_rust_vm(jf)
+            else:
+                ok = run_python_vm(jf)
             results[name] = ok
             print(f"Result: {'PASS' if ok else 'FAIL'}")
         except Exception as e:
@@ -174,14 +188,6 @@ def main():
         print(f"  {name:15} : {'PASS' if ok else 'FAIL'}")
     print(f"\nPassed: {sum(results.values())}/{len(results)}")
     print("=" * 70)
-
-def run_python_vm(json_file: str) -> bool:
-    with open(json_file) as f: data = json.load(f)
-    bytecode = bytes.fromhex(data["bytecode"])
-    print(f"[Python VM] Loaded {len(bytecode)} bytes")
-    vm = VMContext(bytecode)
-    if vm.execute(): print("[Python VM] Executed successfully"); return True
-    else: print(f"[Python VM] Error: {vm.error}"); return False
 
 if __name__ == "__main__":
     main()

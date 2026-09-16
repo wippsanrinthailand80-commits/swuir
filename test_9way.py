@@ -8,6 +8,11 @@ import os
 import struct
 import json
 
+# Get project root dynamically
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = SCRIPT_DIR
+BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
+
 def read_state(path):
     try:
         with open(path, 'rb') as f: data = f.read()
@@ -37,7 +42,7 @@ def compile_c_warps():
     src_upper = {"c": "C", "python": "PY", "rust": "RS"}
     for src in ["c", "python", "rust"]:
         warp_name = f"{src}2c"
-        exe = f"/root/madel/warp_c_{warp_name}"
+        exe = os.path.join(BUILD_DIR, f"warp_c_{warp_name}")
         src_u = src_upper[src]
         code = f'''#include "swuir.h"
 #include <stdio.h>
@@ -58,8 +63,9 @@ int main(int argc,char**v){{ if(argc<3) return 1;
     swuir_init(); swuir_warp_split({warp_name},st,40); swuir_wait_all(); swuir_cleanup();
     printf("[{src_u}->C] Main unchanged: Val=%%.2f\\n", st->value); free(b); return 0; }}'''
         with open(f"/tmp/warp_c_{warp_name}.c", 'w') as f: f.write(code)
-        r = subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-O2", "-I/root/madel",
-                           "-o", exe, f"/tmp/warp_c_{warp_name}.c", "/root/madel/swuir_lib.o", "-lpthread"],
+        r = subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-O2", f"-I{PROJECT_ROOT}",
+                           "-o", exe, f"/tmp/warp_c_{warp_name}.c", 
+                           os.path.join(PROJECT_ROOT, "swuir_lib.o"), "-lpthread"],
                           capture_output=True)
         if r.returncode != 0:
             print(f"[FAIL] Compile {warp_name}: {r.stderr.decode()}")
@@ -67,7 +73,7 @@ int main(int argc,char**v){{ if(argc<3) return 1;
     return True
 
 def warp_c(json_file, in_state, out_state, warp_name):
-    exe = f"/root/madel/warp_c_{warp_name}"
+    exe = os.path.join(BUILD_DIR, f"warp_c_{warp_name}")
     r = subprocess.run([exe, json_file, in_state], capture_output=True, text=True)
     print(r.stdout[-800:])
     with open(in_state, 'rb') as f: data = f.read()
@@ -89,7 +95,7 @@ def warp_python(json_file, in_state, out_state, warp_name):
     return True
 
 def warp_rust(json_file, in_state, out_state, warp_name):
-    exe = "/root/madel/session2_rust_warp"
+    exe = os.path.join(PROJECT_ROOT, "session2_rust_warp")
     r = subprocess.run([exe, json_file, in_state, out_state], capture_output=True, text=True)
     print(r.stdout[-500:])
     return r.returncode == 0
@@ -123,11 +129,11 @@ def test_transition(source, target):
     return False
 
 def main():
-    os.chdir("/root/madel")
+    os.chdir(PROJECT_ROOT)
     
     if not compile_c_warps():
         return 1
-    subprocess.run(["rustc", "--edition", "2021", "/root/madel/session2_rust_warp.rs", "-o", "/root/madel/session2_rust_warp"], capture_output=True)
+    subprocess.run(["rustc", "--edition", "2021", os.path.join(PROJECT_ROOT, "session2_rust_warp.rs"), "-o", os.path.join(PROJECT_ROOT, "session2_rust_warp")], capture_output=True)
     
     langs = ["c", "python", "rust"]
     results = {}

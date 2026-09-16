@@ -51,11 +51,12 @@ class SwuirILLibrary:
         return cls._instance
     
     def _load_library(self):
+        # Get the project root (parent of python_bindings directory)
+        project_root = Path(__file__).parent.parent
         search_paths = [
-            Path('/root/madel'),
+            project_root,
             Path('/usr/local/lib'),
             Path('/usr/lib'),
-            Path(__file__).parent.parent,
             Path.cwd(),
         ]
         

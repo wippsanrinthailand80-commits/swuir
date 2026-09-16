@@ -11,6 +11,16 @@ import sys
 import os
 import time
 
+# Get project root dynamically (directory of this script)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = SCRIPT_DIR
+BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
+
+def get_build_path(name: str) -> str:
+    """Get path to built executable, building if needed."""
+    os.makedirs(BUILD_DIR, exist_ok=True)
+    return os.path.join(BUILD_DIR, name)
+
 def create_il_json_from_python(output_file: str):
     """Python creates IL module JSON directly (no C library needed)"""
     print("[Python] Creating S.W.UIR IL module (pure JSON)...")
@@ -69,14 +79,15 @@ def run_c_warp_executor(json_file: str, state_file: str):
     print(f"[C] Loading state binary from {state_file}...")
     
     # Compile the C executor if needed
-    exe_path = "/root/madel/swuir_il_executor2"
+    exe_path = get_build_path("swuir_il_executor2")
     if not os.path.exists(exe_path):
         print("[C] Compiling executor...")
         result = subprocess.run([
             "gcc", "-std=c99", "-Wall", "-Wextra", "-O2",
-            "-I/root/madel", "-o", exe_path,
-            "/root/madel/swuir_il_executor2.c", "/root/madel/swuir.c"
-        ], capture_output=True, text=True, cwd="/root/madel")
+            f"-I{PROJECT_ROOT}", "-o", exe_path,
+            os.path.join(PROJECT_ROOT, "swuir_il_executor2.c"), 
+            os.path.join(PROJECT_ROOT, "swuir_lib.o")
+        ], capture_output=True, text=True, cwd=PROJECT_ROOT)
         if result.returncode != 0:
             print(f"[C] Compilation failed: {result.stderr}")
             return False
