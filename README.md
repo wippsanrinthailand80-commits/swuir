@@ -1,8 +1,9 @@
 # S.W.UIR — Stateful Warp Universal IR
 
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
-[![Language](https://img.shields.io/badge/C99%20%7C%20Python%20%7C%20Rust-orange)]()
+![Build](https://github.com/wippsanrinthailand80-commits/swuir/actions/workflows/build.yml/badge.svg)
+![License](https://img.shields.io/github/license/wippsanrinthailand80-commits/swuir)
+![Language](https://img.shields.io/github/languages/top/wippsanrinthailand80-commits/swuir)
+![Languages](https://img.shields.io/github/languages/count/wippsanrinthailand80-commits/swuir)
 
 **S.W.UIR** (Stateful Warp Universal Intermediate Representation) is a cross-language runtime architecture inspired by adaptive vehicle suspension physics. It enables dual-path execution where a "warp" splits execution: the main thread continues seamlessly while a new warp session executes a dormant code block with inherited state.
 
@@ -191,6 +192,33 @@ python3 cross_lang_all.py       # C→Py→Rust→C chain
 - **Compression** = `swuir_pin_state()` captures and pins memory state
 - **Dual-Path** = `swuir_warp_split()` splits execution like a suspension splitting force
 - **Rebound** = Warp session executes dormant code with inherited state, main continues
+
+## Inspiration & Origin — "Brain-Hallucinating Choke"
+
+S.W.UIR was born from a late-night debugging session where a recursive function
+kept choking on its own stack frames — a classic "hallucinating brain" moment
+where the call stack folded into itself, each frame convinced it was the base
+case but actually just another layer of the same delusion.
+
+The name **"Brain-Hallucinating Choke"** captures that moment:
+- **Brain** = the runtime's execution context
+- **Hallucinating** = the dormant code path that *appears* unreachable but isn't
+- **Choke** = the stack pressure when both paths try to occupy the same space
+
+The insight: instead of fighting the choke, *embrace it*. Pin the current
+state (compression), split execution into two real paths (dual-path), and
+let each run with the same pinned context (rebound). The "hallucination"
+becomes a feature — the dormant block was always there, just waiting for
+the warp to make it real.
+
+This mirrors a 2D shock absorber physics model:
+- **Compression stroke** → `swuir_pin_state()` snapshots memory
+- **Split valve** → `swuir_warp_split()` divides execution
+- **Rebound stroke** → Both paths execute with shared pinned state
+
+The "universal IR" (S.W.UIR) emerged because the same physics applies
+whether the chassis is C, Python, or Rust — the suspension mechanics
+are language-agnostic.
 
 ## License
 

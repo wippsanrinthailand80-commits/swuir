@@ -1,0 +1,52 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make libjansson-dev python3 python3-pip
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          rustup default stable
+
+      - name: Build C core
+        run: |
+          make
+
+      - name: Run C tests
+        run: |
+          ./swuir_poc
+          ./test_il
+
+      - name: Build Rust VM
+        run: |
+          source "$HOME/.cargo/env"
+          cd rust_vm && cargo build --release
+
+      - name: Run Rust VM tests
+        run: |
+          source "$HOME/.cargo/env"
+          cd rust_vm && cargo test
+
+      - name: Run Python VM
+        run: |
+          python3 python_vm.py
+
+      - name: Cross-language bytecode tests
+        run: |
+          python3 cross_lang_bytecode_demo.py
+          python3 test_9way.py
+          python3 run_all_tests.py
