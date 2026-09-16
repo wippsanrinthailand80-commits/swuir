@@ -37,7 +37,9 @@ jobs:
         run: |
           ./swuir_poc
           ./test_il
-          ./test_c_vm
+          # Create test JSON for test_c_vm
+          echo '{"version":1,"magic":"0x53575549","module":"test","bytecode":"1005000000530000000010010000005301000000520000000010010000002153000000005201000000520000000022530100000052000000001001000000344114000000520100000061ff","size":75}' > /tmp/test_c_vm.json
+          ./test_c_vm /tmp/test_c_vm.json
           ./test_vm
 
       - name: Build Rust VM
