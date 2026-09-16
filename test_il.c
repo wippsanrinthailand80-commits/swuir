@@ -1,5 +1,6 @@
 #include "swuir_il.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int main() {
     SwuirILModule* module = swuir_il_module_create("test", 1024);
