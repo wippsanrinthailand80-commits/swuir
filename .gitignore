@@ -50,6 +50,11 @@ Thumbs.db
 *.temp
 /tmp/
 
+# Environment files (secrets, tokens)
+.env
+.env.local
+.env.*.local
+
 # Unrelated project files
 ai_tool/
 anti-cheat-demo/
