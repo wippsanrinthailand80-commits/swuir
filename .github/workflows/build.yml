@@ -25,6 +25,9 @@ jobs:
       - name: Build C core
         run: |
           make
+          # Build additional test executables
+          gcc -std=c99 -Wall -Wextra -O2 -I. -o test_il test_il.c swuir_il.c
+          gcc -std=c99 -Wall -Wextra -O2 -I. -o test_c_vm test_c_vm.c swuir_vm.o -ljansson
 
       - name: Run C tests
         run: |
@@ -46,6 +49,8 @@ jobs:
           python3 python_vm.py
 
       - name: Cross-language bytecode tests
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}
         run: |
           python3 cross_lang_bytecode_demo.py
           python3 test_9way.py
