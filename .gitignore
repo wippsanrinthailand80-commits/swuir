@@ -1,0 +1,65 @@
+# Build artifacts
+*.o
+*.so
+*.a
+*.dylib
+*.dll
+*.exe
+*.out
+
+# Executables
+swuir_poc
+swuir_il_creator
+swuir_il_executor
+swuir_il_executor2
+swuir_il_final
+test_il
+test_c_vm
+test_vm
+session2_rust_warp
+session3_c_final
+warp_c_*
+
+# Test executables
+*_test
+*_runner
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Rust build
+rust_bindings/target/
+rust_vm/target/
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Unrelated project files
+ai_tool/
+anti-cheat-demo/
+behavior_pack/
+docs/
+examples/
+resource_pack/
+speedrun*
+stormforged*
+tools/
+world_build/
+send-email.sh
+README.md
