@@ -25,14 +25,20 @@ jobs:
       - name: Build C core
         run: |
           make
-          # Build additional test executables
+          # Build object file for tests
+          gcc -std=c99 -Wall -Wextra -O2 -fPIC -I. -c swuir.c -o swuir_lib.o
+          gcc -std=c99 -Wall -Wextra -O2 -fPIC -I. -c swuir_vm.c -o swuir_vm.o
+          # Build test executables
           gcc -std=c99 -Wall -Wextra -O2 -I. -o test_il test_il.c swuir_il.c
           gcc -std=c99 -Wall -Wextra -O2 -I. -o test_c_vm test_c_vm.c swuir_vm.o -ljansson
+          gcc -std=c99 -Wall -Wextra -O2 -I. -o test_vm test_vm.c swuir_vm.o
 
       - name: Run C tests
         run: |
           ./swuir_poc
           ./test_il
+          ./test_c_vm
+          ./test_vm
 
       - name: Build Rust VM
         run: |
